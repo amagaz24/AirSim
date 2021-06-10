@@ -2,11 +2,9 @@
 
 #include "CommonStructs.hpp"
 
-namespace simple_flight
-{
+namespace simple_flight {
 
-class IStateEstimator
-{
+class IStateEstimator {
 public:
     virtual Axis3r getAngles() const = 0;
     virtual Axis3r getAngularVelocity() const = 0;
@@ -21,4 +19,5 @@ public:
 
     virtual Axis3r transformToBodyFrame(const Axis3r& world_frame_val) const = 0;
 };
+
 }

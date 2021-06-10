@@ -7,8 +7,9 @@
 using namespace msr::airlib;
 
 CarPawnSimApi::CarPawnSimApi(const Params& params,
-                             const msr::airlib::CarApiBase::CarControls& keyboard_controls, UWheeledVehicleMovementComponent* movement)
-    : PawnSimApi(params), params_(params), keyboard_controls_(keyboard_controls)
+    const msr::airlib::CarApiBase::CarControls& keyboard_controls, UWheeledVehicleMovementComponent* movement)
+    : PawnSimApi(params), params_(params),
+      keyboard_controls_(keyboard_controls)
 {
 }
 
@@ -27,7 +28,8 @@ void CarPawnSimApi::createVehicleApi(ACarPawn* pawn, const msr::airlib::GeoPoint
     //create vehicle params
     std::shared_ptr<UnrealSensorFactory> sensor_factory = std::make_shared<UnrealSensorFactory>(getPawn(), &getNedTransform());
 
-    vehicle_api_ = CarApiFactory::createApi(getVehicleSetting(), sensor_factory, (*getGroundTruthKinematics()), (*getGroundTruthEnvironment()), home_geopoint);
+    vehicle_api_ = CarApiFactory::createApi(getVehicleSetting(), sensor_factory, (*getGroundTruthKinematics()),
+                                            (*getGroundTruthEnvironment()), home_geopoint);
     pawn_api_ = std::unique_ptr<CarPawnApi>(new CarPawnApi(pawn, getGroundTruthKinematics(), vehicle_api_.get()));
 }
 
@@ -39,14 +41,20 @@ std::string CarPawnSimApi::getRecordFileLine(bool is_header_line) const
                "Throttle\tSteering\tBrake\tGear\tHandbrake\tRPM\tSpeed\t";
     }
 
-    const auto& state = pawn_api_->getCarState();
+    const msr::airlib::Kinematics::State* kinematics = getGroundTruthKinematics();
+    const auto state = pawn_api_->getCarState();
 
-    std::ostringstream ss;
-    ss << common_line;
-    ss << current_controls_.throttle << "\t" << current_controls_.steering << "\t" << current_controls_.brake << "\t";
-    ss << state.gear << "\t" << state.handbrake << "\t" << state.rpm << "\t" << state.speed << "\t";
+    common_line
+        .append(std::to_string(current_controls_.throttle)).append("\t")
+        .append(std::to_string(current_controls_.steering)).append("\t")
+        .append(std::to_string(current_controls_.brake)).append("\t")
+        .append(std::to_string(state.gear)).append("\t")
+        .append(std::to_string(state.handbrake)).append("\t")
+        .append(std::to_string(state.rpm)).append("\t")
+        .append(std::to_string(state.speed)).append("\t")
+        ;
 
-    return ss.str();
+    return common_line;
 }
 
 //these are called on render ticks
@@ -73,7 +81,7 @@ void CarPawnSimApi::updateRendering(float dt)
     try {
         vehicle_api_->sendTelemetry(dt);
     }
-    catch (std::exception& e) {
+    catch (std::exception &e) {
         UAirBlueprintLib::LogMessage(FString(e.what()), TEXT(""), LogDebugLevel::Failure, 30);
     }
 }
@@ -102,8 +110,10 @@ void CarPawnSimApi::updateCarControls()
             joystick_controls_.brake = rc_data.throttle;
 
             auto car_state = vehicle_api_->getCarState();
-            float rumble_strength = 0.66 + (car_state.rpm / car_state.maxrpm) / 3;
-            float auto_center = (1.0 - 1.0 / (std::abs(car_state.speed / 120) + 1.0)) * (rc_data.yaw / 3);
+            float rumble_strength = 0.66 + (car_state.rpm
+                / car_state.maxrpm) / 3;
+            float auto_center = (1.0 - 1.0 / (std::abs(car_state.speed / 120) + 1.0))
+            * (rc_data.yaw / 3);
             setRCForceFeedback(rumble_strength, auto_center);
         }
         // Anything else, typically Logitech G920 wheel
@@ -168,3 +178,4 @@ void CarPawnSimApi::update()
 }
 
 //*** End: UpdatableState implementation ***//
+
